@@ -1,2 +1,3 @@
 kicad_project/*.bak
 kicad_project/*-backups
+firmware/build

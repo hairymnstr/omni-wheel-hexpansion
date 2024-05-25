@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "name": "CPP Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/build/motor-hexpansion-firmware.elf",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "externalConsole": false,
+            "debugServerArgs": "-f interface/cmsis-dap.cfg -f target/stm32g0x.cfg -c \"adapter speed 5000\"",
+            "serverLaunchTimeout": 2000,
+            "filterStderr": true,
+            "filterStdout": false,
+            "stopAtConnect": false,
+            "serverStarted": "Listening on port 3333 for gdb connections",
+            "preLaunchTask": "Build",
+            "setupCommands": [
+                {
+                    "text": "-target-select remote localhost:3333",
+                    "description": "connect to target",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "load ${workspaceRoot}/build/motor-hexpansion-firmware.elf"
+                },
+            ],
+            "logging": {
+                "moduleLoad": true,
+                "trace": true,
+                "engineLogging": true,
+                "programOutput": true,
+                "exceptions": true
+            },
+            "linux": {
+                "MIMode": "gdb",
+                "MIDebuggerPath": "${env:ARM_GCC_PATH}/arm-none-eabi-gdb",
+                "debugServerPath": "openocd"
+            }
+        }
+    ]
+}

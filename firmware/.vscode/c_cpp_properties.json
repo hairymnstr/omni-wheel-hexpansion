@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "includePath": [
+                "Middlewares/Third_Party/FreeRTOS/Source/include",
+                "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS",
+                "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F",
+                "Core/Inc",
+                "application/common/inc",
+                "Drivers/STM32G0xx_HAL_Driver/Inc",
+                "Drivers/CMSIS/Device/ST/STM32G0xx/Include",
+                "Drivers/CMSIS/Include",
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32G070xx",
+                "USER_VECT_TAB_ADDRESS"
+            ],
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17"
+        }
+    ],
+    "version": 4
+}
