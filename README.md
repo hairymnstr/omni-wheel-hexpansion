@@ -27,6 +27,41 @@ The probe can be connected to both the SWD pins and the UART for test and debug.
 is also in this repository and can be built easily using Visual Studio Code or just by running
 the Makefile provided you have an ARM embedded compiler installed.
 
+# Hexpansion API
+
+The hexpansion has a very simple interface, everything is controlled via I2C.
+
+There are 2 devices presented (both in software on the STM32):
+
+* 0x50 is a 256 byte fake EEPROM which has a valid "hexpansion" header identifying the board
+* 0x42 has a register based control and status interface
+
+Both devices operate in "memory" mode, i.e. they take an address then data to be read or written.
+Both use single byte addressing.  Using the Micropython `readfrom_mem` and `writeto_mem` functions
+will work.
+
+There are only 2 registers defined, they can both be read and written, reading or writing any
+other part of the 256 byte address space will be stored but won't make any difference to the
+operation of the device.  Reads are guaranteed to be coherent so you won't get part of a register
+that's updated between starting the I2C transaction and finishing it.
+
+* Address 0, length 16 bit little endian: PWM value, a value in the range -100 to 100
+* Address 2, length 16 bit little endian: Encoder position
+
+Using the badge software you can use `machine.I2C` and `struct` to access these registers.
+Note that on the Tildagon badge there are I2C buses for each hexpansion so you will need
+to change the paramter to `I2C` for each slot you connect to.
+
+This trivial example sets the speed to full reverse then prints out the current
+encoder value.
+
+    import struct
+    import machine
+
+    bus = machine.I2C(2)
+    bus.writeto_mem(0x42, 0, struct.pack("<h", -100))
+    print(struct.unpack("<h", bus.readfrom_mem(0x42, 2, 2))[0])
+
 # Questions I think might be asked
 ## Why all the fuss about encoders?
 
