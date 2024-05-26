@@ -11,8 +11,8 @@
 #include "main.h"
 #include "i2c_slave_state_machine.h"
 
-// emulated I2C RAM
-static const uint8_t ram[256] = "THEX2024\x40\x00\x40\x00\x00\x00\x00\x00\xfe\xca\x34\x12\x00\x00OMNIWHL\x00\x00\x00";
+// emulated I2C EEPROM
+extern const uint8_t eeprom[256];// = "THEX2024\x40\x00\x40\x00\x00\x00\x00\x00\xfe\xca\x34\x12\x00\x00OMNIWHL\x00\x00\x00";
 // emulated registers
 uint8_t regs[256];
 bool regs_locked = false;
@@ -33,7 +33,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 {
 	HAL_GPIO_WritePin( LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET );
     if ((AddrMatchCode >> 1) == 0x50) {
-        dest = ram;
+        dest = eeprom;
     } else {
         dest = regs;
         regs_locked = true;
