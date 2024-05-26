@@ -23,6 +23,13 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <stdbool.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "i2c_slave_state_machine.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +56,7 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart3;
 
 osThreadId defaultTaskHandle;
+osThreadId encoderTaskHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -61,6 +69,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
 void StartDefaultTask(void const * argument);
+void startEncoderTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -127,6 +136,10 @@ int main(void)
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of encoderTask */
+  osThreadDef(encoderTask, startEncoderTask, osPriorityNormal, 0, 128);
+  encoderTaskHandle = osThreadCreate(osThread(encoderTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -262,7 +275,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
+  htim1.Init.Period = 3199;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -277,7 +290,7 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.OCMode = TIM_OCMODE_PWM2;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
@@ -475,31 +488,52 @@ void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   set_pwm(0);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-  int x = 0;
+
+  HAL_I2C_EnableListen_IT(&hi2c1);
+
   for(;;)
   {
-    int spd = 0;
-    if (x < 10) {
-      spd = x * 10;
-    } else if (x < 20) {
-      spd = (10 - (x - 10)) * 10;
-    }
-    x++;
-    snprintf(print_buffer, 128, "Pos: %lu, spd = %d, x = %d\r\n", TIM3->CNT, spd, x);
-    set_pwm(spd);
-    HAL_UART_Transmit(&huart3, (uint8_t *)print_buffer, strlen(print_buffer), 1000);
-    HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
-    osDelay(500);
-    HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);
-    osDelay(500);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+    // something happened to the registers, check if any of the input values were changed
+    taskENTER_CRITICAL();
+    uint8_t new_spd = regs[0];
+    taskEXIT_CRITICAL();
 
+    set_pwm(new_spd);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_startEncoderTask */
+/**
+* @brief Function implementing the encoderTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_startEncoderTask */
+void startEncoderTask(void const * argument)
+{
+  /* USER CODE BEGIN startEncoderTask */
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
+  /* Infinite loop */
+  for(;;)
+  {
+    uint16_t enc_val = htim3.Instance->CNT;
+    // update the registers in a critical section, and only if no I2C read
+    // is going on so that the 16 bit value is always coherent
+    taskENTER_CRITICAL();
+    if (regs_locked == false) {
+      regs[2] = enc_val >> 8;
+      regs[3] = enc_val & 0xff;
+    }
+    taskEXIT_CRITICAL();
+    osDelay(10);
+  }
+  /* USER CODE END startEncoderTask */
 }
 
 /**
